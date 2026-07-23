@@ -1,0 +1,32 @@
+# Camera configuration
+camera:
+  source: 0                # 0 = default laptop webcam, or path/URL for external stream
+  backend: "DSHOW"          # DSHOW (Windows), MSMF, ANY
+  resolution_preset: "720p"  # "720p" or "1080p" — see camera/resolution_manager.py
+  width: 1280
+  height: 720
+  fps_target: 30
+  fps_min: 15                # automatic FPS adjustment will not drop below this
+  flip_horizontal: true
+  auto_exposure: true
+  buffer_size: 1            # keep low to minimize latency
+  retry_attempts: 5
+  retry_delay_seconds: 1.0
+
+  # Continuous automatic recovery during a live session (distinct from
+  # the initial connect() retry above) — see camera/camera_manager.py.
+  auto_recovery:
+    enabled: true
+    max_consecutive_failures: 10
+    reconnect_backoff_seconds: 0.5
+
+  # Low-latency background capture thread + bounded frame queue —
+  # see camera/frame_queue.py.
+  frame_queue:
+    enabled: true
+    max_queue_size: 2         # small on purpose: always process the newest frame
+    drop_policy: "oldest"     # "oldest" | "newest" — which frame to discard when full
+
+  resolution_presets:
+    720p: [1280, 720]
+    1080p: [1920, 1080]

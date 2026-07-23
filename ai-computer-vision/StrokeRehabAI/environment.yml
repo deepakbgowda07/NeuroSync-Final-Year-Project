@@ -1,0 +1,37 @@
+# Conda environment definition for StrokeRehabAI.
+# Create with: conda env create -f environment.yml
+# Activate with: conda activate strokerehab-ai
+name: strokerehab-ai
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10.11
+  - pip
+  - numpy=1.26.4
+  - pandas=2.2.2
+  - scikit-learn=1.5.1
+  - matplotlib=3.9.1
+  - pyyaml=6.0.1
+  - pytest=8.3.2
+  - pip:
+      - torch==2.3.1
+      - torchvision==0.18.1
+      - torchmetrics==1.4.0.post0
+      - opencv-python==4.10.0.84
+      - opencv-contrib-python==4.10.0.84
+      - mediapipe==0.10.14
+      - plotly==5.23.0
+      - rich==13.7.1
+      - onnxruntime-gpu==1.18.1
+      - onnx==1.16.1
+      - streamlit==1.37.0
+      - tensorboard==2.17.0
+      - pytest-cov==5.0.0
+      - requests==2.32.3
+      - tqdm==4.66.4
+      # For CUDA-accelerated torch on Windows, prefer installing torch via
+      # the official index instead of PyPI defaults:
+      #   pip install torch==2.3.1 --index-url https://download.pytorch.org/whl/cu121

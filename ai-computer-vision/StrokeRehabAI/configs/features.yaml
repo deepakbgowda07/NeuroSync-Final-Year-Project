@@ -1,0 +1,17 @@
+# Feature-extraction toggles and parameters.
+# See feature_extraction/feature_pipeline.py, which reads this section
+# when generating features alongside converted dataset samples.
+features:
+  fps: 30
+  rep_counting:
+    enabled: true
+    target_angle: "left_elbow_angle"   # any key from utils.joint_angles.JOINT_ANGLE_DEFINITIONS
+    smoothing_window: 5
+    min_prominence_deg: 10.0
+    min_distance_frames: 10
+  compensation_indicators:
+    trunk_lean_threshold_deg: 15.0
+    shoulder_hiking_threshold: 0.15
+  smoothness:
+    joints: ["left_wrist", "right_wrist"]
+  save_features_with_samples: true

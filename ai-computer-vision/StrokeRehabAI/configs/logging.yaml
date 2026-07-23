@@ -1,0 +1,11 @@
+# Logging configuration
+logging:
+  level: "INFO"                  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  console_output: true
+  file_output: true
+  log_dir: "logs"
+  log_filename_pattern: "strokerehab_{timestamp}.log"
+  error_log_filename: "errors.log"
+  rotate_max_bytes: 5242880
+  rotate_backup_count: 5
+  rich_traceback: true

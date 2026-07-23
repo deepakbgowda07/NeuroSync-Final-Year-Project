@@ -1,0 +1,59 @@
+# Dataset configuration
+datasets:
+  active_dataset: "UI-PRMD"       # UI-PRMD, KIMORE, IntelliRehabDS, StrokeRehab_Mendeley, CUSTOM
+  root_dir: "data/raw"
+  processed_dir: "data/processed"
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+  sequence_length: 90              # frames per sample window
+  stride: 15                       # sliding window stride
+  target_fps: 30
+  split_seed: 42
+  split_by: "subject"              # "subject" (no patient leakage) or "sample"
+  data_representation: "graph"     # "graph" (T,V,C) for ST-GCN, or "flat" (T, V*C) for LSTM
+
+  # Unified on-disk dataset layout (see docs/dataset_guide.md)
+  unified_layout:
+    root: "data/unified"
+    raw: "data/unified/raw"
+    processed: "data/unified/processed"
+    annotations: "data/unified/annotations"
+    videos: "data/unified/videos"
+    landmarks: "data/unified/landmarks"
+    splits: "data/unified/splits"
+    metadata: "data/unified/metadata"
+
+  video_processing:
+    frame_sample_rate: 1           # 1 = keep every frame, 2 = every other frame, etc.
+    target_resolution: [640, 480]  # [width, height] for resolution normalization
+    target_fps: 30
+    min_valid_frames: 15           # samples shorter than this are flagged invalid
+    max_frame_gap_ratio: 0.2       # fraction of missing/corrupted frames tolerated
+    duplicate_hash_size: 8         # perceptual-hash grid size for duplicate detection
+
+  landmark_extraction:
+    cache_dir: "data/unified/landmarks"
+    cache_format: "npz"            # npz (primary cache) + csv/json exports on demand
+    overwrite_cache: false
+    model_complexity: 1
+    min_detection_confidence: 0.5
+    min_tracking_confidence: 0.5
+
+  sources:
+    UI-PRMD:
+      url: "https://www.webpages.uidaho.edu/ui-prmd/"
+      local_path: "data/raw/ui_prmd"
+      license_note: "Requires manual download per UI-PRMD usage terms."
+    KIMORE:
+      url: "https://vrai.dii.univpm.it/content/kimore-dataset"
+      local_path: "data/raw/kimore"
+      license_note: "Requires registration; not auto-downloadable."
+    IntelliRehabDS:
+      url: "https://zenodo.org/records/4610859"
+      local_path: "data/raw/intellirehab_ds"
+      license_note: "Available on Zenodo under its stated license terms."
+    StrokeRehab_Mendeley:
+      url: "https://data.niaid.nih.gov/resources?id=mendeley_ygpdzx52g2"
+      local_path: "data/raw/stroke_rehab_mendeley"
+      license_note: "Hosted via NIAID data portal; verify license before redistribution."
