@@ -1,0 +1,25 @@
+# Data augmentation configuration.
+# Landmark-space augmentations run during training-time dataset loading
+# (preprocessing/augmentations.py); frame-space augmentations run during
+# dataset conversion, before pose estimation (preprocessing/video_augmentations.py).
+augmentation:
+  enabled: true
+
+  landmark:
+    rotation_deg_std: 5.0
+    noise_std: 0.01
+    scale_jitter_std: 0.03
+    mirror_prob: 0.0             # keep disabled by default; see augmentations.py TODO
+    valid_for_mirroring: true
+    temporal_crop_prob: 0.3
+    temporal_crop_min_ratio: 0.8
+    random_frame_drop_prob: 0.2
+    random_frame_drop_max_ratio: 0.1
+    temporal_stretch_prob: 0.3
+    temporal_stretch_range: [0.85, 1.15]
+
+  video:
+    enabled: false               # frame-space augmentation is comparatively expensive; opt-in
+    brightness_delta_range: [-30, 30]
+    contrast_factor_range: [0.85, 1.15]
+    gaussian_noise_std: 5.0

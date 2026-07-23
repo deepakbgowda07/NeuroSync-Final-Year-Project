@@ -1,0 +1,37 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Data & weights (large, often licensed — never commit)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+weights/checkpoints/*
+weights/exported/*
+!weights/checkpoints/.gitkeep
+!weights/exported/.gitkeep
+
+# Logs & outputs
+logs/*
+!logs/.gitkeep
+outputs/*
+!outputs/.gitkeep
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Streamlit / dashboard DB
+*.db
+
+# Environment files
+.env

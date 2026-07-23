@@ -1,0 +1,14 @@
+# Visualization configuration
+visualization:
+  skeleton_color: [0, 255, 0]
+  correct_color: [0, 200, 0]
+  warning_color: [0, 165, 255]
+  error_color: [0, 0, 255]
+  joint_radius_px: 5
+  connection_thickness_px: 2
+  show_joint_angles: true
+  show_ghost_skeleton: true
+  ghost_skeleton_opacity: 0.4
+  show_correction_arrows: true
+  hud_font_scale: 0.6
+  performance_graph_window_seconds: 30

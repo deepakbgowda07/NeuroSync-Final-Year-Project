@@ -1,0 +1,12 @@
+# Evaluation configuration
+evaluation:
+  metrics:
+    - "accuracy"
+    - "f1_score"
+    - "precision"
+    - "recall"
+    - "confusion_matrix"
+    - "rom_error_degrees"     # range-of-motion error, domain-specific metric
+  report_output_dir: "outputs/evaluation_reports"
+  save_predictions: true
+  save_confusion_matrix_plot: true

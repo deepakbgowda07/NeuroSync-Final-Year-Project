@@ -1,0 +1,16 @@
+# Personalization / calibration session configuration.
+# See inference/calibration.py.
+calibration:
+  duration_seconds: 12          # target under 15s, see docs/inference_guide.md
+  countdown_seconds: 3
+  min_frames_required: 30
+  stability_std_threshold_deg: 4.0   # joint-angle stability required to accept calibration
+  required_landmarks:
+    - left_shoulder
+    - right_shoulder
+    - left_elbow
+    - right_elbow
+    - left_wrist
+    - right_wrist
+    - left_hip
+    - right_hip

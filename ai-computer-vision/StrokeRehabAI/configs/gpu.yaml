@@ -1,0 +1,9 @@
+# GPU / CUDA configuration
+gpu:
+  use_cuda_if_available: true
+  device_index: 0
+  allow_tf32: true
+  cudnn_benchmark: true
+  fallback_to_cpu: true
+  target_hardware_note: "Tuned defaults assume an NVIDIA RTX 3050 Laptop GPU (6GB VRAM)."
+  max_batch_size_6gb_vram: 16

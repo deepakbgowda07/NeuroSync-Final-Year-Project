@@ -1,0 +1,131 @@
+# Exercise library configuration.
+# Defines the exactly-10 supported exercises (see inference/exercise_library.py),
+# their primary tracked joint angle(s), expected clinical range of motion,
+# view requirements, and rep-detection thresholds. All values are
+# principled starting defaults pending clinician validation — see the
+# TODO in inference/exercise_library.py.
+exercises:
+  recognition:
+    confidence_window_frames: 20      # frames of agreement required before switching exercises
+    min_recognition_confidence: 0.55
+
+  definitions:
+    shoulder_flexion:
+      display_name: "Shoulder Flexion"
+      primary_angle: "left_shoulder_angle"
+      secondary_angle: "right_shoulder_angle"
+      required_view: "side"
+      neutral_deg: 15
+      target_deg: 150
+      min_acceptable_rom_deg: 110
+      max_acceptable_rom_deg: 180
+      rep_direction: "increasing"
+      symmetric: false
+
+    shoulder_abduction:
+      display_name: "Shoulder Abduction"
+      primary_angle: "left_shoulder_abduction_angle"
+      secondary_angle: "right_shoulder_abduction_angle"
+      required_view: "front"
+      neutral_deg: 10
+      target_deg: 150
+      min_acceptable_rom_deg: 110
+      max_acceptable_rom_deg: 180
+      rep_direction: "increasing"
+      symmetric: false
+
+    elbow_flexion:
+      display_name: "Elbow Flexion"
+      primary_angle: "left_elbow_angle"
+      secondary_angle: "right_elbow_angle"
+      required_view: "side"
+      neutral_deg: 170
+      target_deg: 45
+      min_acceptable_rom_deg: 40
+      max_acceptable_rom_deg: 160
+      rep_direction: "decreasing"
+      symmetric: false
+
+    elbow_extension:
+      display_name: "Elbow Extension"
+      primary_angle: "left_elbow_angle"
+      secondary_angle: "right_elbow_angle"
+      required_view: "side"
+      neutral_deg: 60
+      target_deg: 170
+      min_acceptable_rom_deg: 140
+      max_acceptable_rom_deg: 180
+      rep_direction: "increasing"
+      symmetric: false
+
+    forearm_pronation:
+      display_name: "Forearm Pronation"
+      primary_angle: "left_forearm_rotation_proxy"
+      secondary_angle: "right_forearm_rotation_proxy"
+      required_view: "front"
+      neutral_deg: 0
+      target_deg: 80
+      min_acceptable_rom_deg: 60
+      max_acceptable_rom_deg: 100
+      rep_direction: "increasing"
+      symmetric: false
+
+    forearm_supination:
+      display_name: "Forearm Supination"
+      primary_angle: "left_forearm_rotation_proxy"
+      secondary_angle: "right_forearm_rotation_proxy"
+      required_view: "front"
+      neutral_deg: 0
+      target_deg: -80
+      min_acceptable_rom_deg: -100
+      max_acceptable_rom_deg: -60
+      rep_direction: "decreasing"
+      symmetric: false
+
+    shoulder_external_rotation:
+      display_name: "Shoulder External Rotation"
+      primary_angle: "left_shoulder_rotation_proxy"
+      secondary_angle: "right_shoulder_rotation_proxy"
+      required_view: "front"
+      neutral_deg: 0
+      target_deg: 70
+      min_acceptable_rom_deg: 50
+      max_acceptable_rom_deg: 90
+      rep_direction: "increasing"
+      symmetric: false
+
+    shoulder_internal_rotation:
+      display_name: "Shoulder Internal Rotation"
+      primary_angle: "left_shoulder_rotation_proxy"
+      secondary_angle: "right_shoulder_rotation_proxy"
+      required_view: "front"
+      neutral_deg: 0
+      target_deg: -70
+      min_acceptable_rom_deg: -90
+      max_acceptable_rom_deg: -50
+      rep_direction: "decreasing"
+      symmetric: false
+
+    hand_to_mouth:
+      display_name: "Hand-to-Mouth Reach"
+      primary_angle: "left_elbow_angle"
+      secondary_angle: "right_elbow_angle"
+      required_view: "side"
+      neutral_deg: 170
+      target_deg: 35
+      min_acceptable_rom_deg: 30
+      max_acceptable_rom_deg: 160
+      rep_direction: "decreasing"
+      symmetric: false
+
+    hand_to_head:
+      display_name: "Hand-to-Head Reach"
+      primary_angle: "left_elbow_angle"
+      secondary_angle: "right_elbow_angle"
+      required_view: "front"
+      neutral_deg: 170
+      target_deg: 30
+      min_acceptable_rom_deg: 25
+      max_acceptable_rom_deg: 160
+      rep_direction: "decreasing"
+      symmetric: false

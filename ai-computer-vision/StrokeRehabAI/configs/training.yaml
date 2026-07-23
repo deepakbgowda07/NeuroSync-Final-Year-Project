@@ -1,0 +1,43 @@
+# Training configuration
+training:
+  experiment_name: "stroke_rehab_stgcn_v1"
+  seed: 42
+  epochs: 100
+  batch_size: 16
+  num_workers: 4
+  pin_memory: true                # pinned host memory for faster host->GPU transfer
+  learning_rate: 0.0003
+  weight_decay: 0.0001
+
+  optimizer: "adamw"               # adamw | adam | sgd | ranger
+  optimizer_params:
+    sgd_momentum: 0.9
+    ranger_k: 6                    # Lookahead sync period
+    ranger_alpha: 0.5               # Lookahead slow-weight step size
+    ranger_betas: [0.95, 0.999]     # RAdam betas
+    ranger_eps: 0.00001
+
+  scheduler: "cosine"              # cosine | step | plateau | none
+  early_stopping_patience: 15
+  early_stopping_metric: "val_loss" # val_loss | val_accuracy | val_f1_score
+  gradient_clip_norm: 1.0
+  mixed_precision: true
+
+  loss: "cross_entropy"            # cross_entropy | mse | huber | weighted_cross_entropy
+  loss_params:
+    huber_delta: 1.0
+    class_weights: null            # null = uniform; else list[float] of length num_classes,
+                                    # or "auto" to compute inverse-frequency weights from the
+                                    # training split at runtime.
+
+  checkpoint_dir: "weights/checkpoints"
+  resume_from_checkpoint: null
+  log_every_n_steps: 10
+  validate_every_n_epochs: 1
+  save_top_k: 3
+
+  tensorboard:
+    enabled: true
+    log_dir: "logs/tensorboard"
+
+  progress_bar: true

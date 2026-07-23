@@ -1,0 +1,44 @@
+# Model configuration
+model:
+  name: "rehab_stgcn_v1"
+  architecture: "stgcn"          # stgcn (default), lstm (fallback baseline)
+  num_classes: 5                 # exercise correctness classes / severity grades
+  output_head: "classification"  # classification, regression, multi_task
+
+  # ---- ST-GCN (default movement-assessment model) ----
+  # Spatial-Temporal Graph Convolutional Network over MediaPipe's 33-joint
+  # skeleton graph. See models/stgcn_model.py and models/graph_utils.py.
+  stgcn:
+    num_joints: 33
+    in_channels: 3                # x, y, z per joint (set to 4 to include visibility)
+    graph_strategy: "spatial"     # uniform | distance | spatial (ST-GCN partitioning strategies)
+    max_hop: 1
+    edge_importance_weighting: true
+    temporal_kernel_size: 9
+    dropout: 0.3
+    # Per-block output channel count; stride 2 halves the temporal dimension.
+    channels: [64, 64, 64, 128, 128, 128, 256, 256, 256]
+    strides:  [1,  1,  1,  2,   1,   1,   2,   1,   1]
+    pretrained_weights:
+      enabled: false
+      path: "weights/checkpoints/stgcn_pretrained.pt"
+      note: >
+        Public ST-GCN checkpoints (e.g. NTU RGB+D) are trained on a
+        different skeleton graph/joint layout than MediaPipe's 33-point
+        format, so they cannot be loaded directly into this model without
+        a joint-mapping + partial-layer transfer step. No such checkpoint
+        is auto-downloaded (see utils/model_downloader.py). Train from
+        scratch, or implement a mapping adapter before enabling this.
+
+  # ---- LSTM (fallback baseline architecture) ----
+  lstm:
+    input_dim: 99                 # 33 landmarks * 3 (x, y, z)
+    hidden_dim: 128
+    num_layers: 2
+    dropout: 0.3
+    bidirectional: true
+
+  onnx_export:
+    enabled: true
+    opset_version: 17
+    output_path: "weights/exported/rehab_model.onnx"

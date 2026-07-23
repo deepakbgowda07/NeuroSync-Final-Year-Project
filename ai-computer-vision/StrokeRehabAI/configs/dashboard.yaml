@@ -1,0 +1,9 @@
+# Streamlit dashboard configuration
+dashboard:
+  title: "StrokeRehabAI Clinical Dashboard"
+  layout: "wide"
+  theme: "light"
+  default_page: "Home"
+  session_timeout_minutes: 60
+  database_path: "outputs/database/stroke_rehab.db"
+  refresh_interval_ms: 500
