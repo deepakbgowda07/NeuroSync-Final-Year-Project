@@ -15,6 +15,10 @@ Run via:
 
 from __future__ import annotations
 
+import sys
+# Mask tensorflow to prevent import errors with incompatible protobuf versions in the environment
+sys.modules["tensorflow"] = None
+
 import argparse
 import time
 from typing import Optional
@@ -200,7 +204,10 @@ class RealtimeInferencePipeline:
                 smoothed, angles, pose_confidence=confidence, view=view, calibration=self._calibration_profile,
             )
 
-        self.session_logger.log_frame(result, angles)
+        self.session_logger.log_frame(
+            result, angles, fps=fps, cuda_available=self._cuda_available,
+            session_elapsed_seconds=hud_state.session_elapsed_seconds,
+        )
 
         for message in self.feedback_engine.generate(result, self._active_definition(result)):
             logger.info("[%s] %s", message.severity.upper(), message.text)

@@ -40,13 +40,31 @@ def load_checkpoint(checkpoint_path: str, map_location: Optional[str] = None) ->
     `weights_only=True` restricted-unpickler rejects. Only load
     checkpoints produced by this project's own training run (see
     training/checkpoint_manager.py) — never an untrusted `.pt` file.
+
+    Raises ModelWeightsError (with a clear user-facing message) if the
+    file is missing or unreadable, rather than letting a raw
+    FileNotFoundError / unpickling error surface to the user.
     """
     import torch
 
+    from utils.error_handling import ModelWeightsError
+
     path = Path(checkpoint_path)
     if not path.exists():
-        raise FileNotFoundError(f"Checkpoint not found: {path}")
-    checkpoint = torch.load(path, map_location=map_location or "cpu", weights_only=False)
+        raise ModelWeightsError(
+            f"No trained model checkpoint found at '{path}'. Train a model first "
+            "(see docs/training_guide.md), or point --checkpoint at an existing file.",
+            detail=f"Checkpoint not found: {path}",
+        )
+    try:
+        checkpoint = torch.load(path, map_location=map_location or "cpu", weights_only=False)
+    except Exception as exc:  # noqa: BLE001 - any unpickling/format failure means the file is unusable
+        raise ModelWeightsError(
+            f"The checkpoint file at '{path}' could not be loaded — it may be corrupted or from an "
+            "incompatible version. Try re-downloading or re-training the checkpoint.",
+            detail=str(exc), cause=exc,
+        ) from exc
+
     logger.info("Loaded checkpoint: %s", path)
     return checkpoint
 

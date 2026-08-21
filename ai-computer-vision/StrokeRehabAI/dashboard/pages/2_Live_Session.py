@@ -14,6 +14,7 @@ browser via a streamlit-webrtc component instead of a native OpenCV
 window, for a fully browser-based session.
 """
 
+import json
 import subprocess
 import sys
 
@@ -90,6 +91,40 @@ else:
     metric_cols[1].metric("Mean Quality", f"{(latest_session['mean_quality'] or 0) * 100:.0f}%")
     metric_cols[2].metric("Mean Confidence", f"{(latest_session['mean_confidence'] or 0) * 100:.0f}%")
     metric_cols[3].metric("Duration (s)", f"{latest_session['duration_seconds'] or 0:.0f}")
+
+    with get_connection(db_path) as conn:
+        latest_frame = conn.execute(
+            "SELECT * FROM session_frames WHERE session_id = ? ORDER BY frame_id DESC LIMIT 1", (session_id,)
+        ).fetchone()
+        latest_rep = conn.execute(
+            "SELECT * FROM session_reps WHERE session_id = ? ORDER BY rep_id DESC LIMIT 1", (session_id,)
+        ).fetchone()
+        recent_compensation = conn.execute(
+            "SELECT COUNT(*) as cnt FROM session_events WHERE session_id = ? AND error_type IN "
+            "('trunk_compensation', 'shoulder_hiking', 'body_lean', 'poor_alignment')",
+            (session_id,),
+        ).fetchone()
+
+    st.subheader("Live Status (most recent logged frame)")
+    live_cols = st.columns(5)
+    live_cols[0].metric("Current Exercise", latest_frame["exercise_name"] if latest_frame else "-")
+    live_cols[1].metric("Current Phase", latest_frame["phase"] if latest_frame else "-")
+    live_cols[2].metric("Current Rep", latest_rep["rep_number"] if latest_rep else 0)
+    live_cols[3].metric("Current Score", f"{(latest_frame['movement_quality'] or 0) * 100:.0f}%" if latest_frame else "-")
+    live_cols[4].metric("ROM (deg)", f"{latest_frame['rom_deg']:.0f}\u00b0" if latest_frame and latest_frame["rom_deg"] else "-")
+
+    compensation_detected = (recent_compensation["cnt"] or 0) > 0
+    st.write(f"**Compensation Detection:** {'🟠 Detected' if compensation_detected else '🟢 None detected'} ({recent_compensation['cnt'] or 0} events this session)")
+
+    if latest_frame and latest_frame["joint_angles_json"]:
+        with st.expander("Current Joint Angles"):
+            st.json(json.loads(latest_frame["joint_angles_json"]))
+
+    perf_cols = st.columns(3)
+    perf_cols[0].metric("FPS", f"{latest_frame['fps']:.1f}" if latest_frame and latest_frame["fps"] else "-")
+    perf_cols[1].metric("CUDA Status", ("ON" if latest_frame["cuda_available"] else "OFF") if latest_frame and latest_frame["cuda_available"] is not None else "-")
+    elapsed = latest_frame["session_elapsed_seconds"] if latest_frame else None
+    perf_cols[2].metric("Session Timer", f"{int(elapsed // 60):02d}:{int(elapsed % 60):02d}" if elapsed is not None else "-")
 
     with get_connection(db_path) as conn:
         recent_frames = conn.execute(

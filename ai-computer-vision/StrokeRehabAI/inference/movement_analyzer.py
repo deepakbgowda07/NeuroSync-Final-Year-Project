@@ -16,14 +16,17 @@ duplicating their logic.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Deque, Dict, List, Optional
+from collections import deque
 
 import numpy as np
 
 from inference.calibration import CalibrationProfile
+from inference.clinical_assessment import ClinicalAssessmentEngine, RepetitionAssessment, RepFrameSample
 from inference.error_detector import DetectedError, ErrorDetector
 from inference.exercise_library import ExerciseLibrary
 from inference.exercise_recognizer import ExerciseRecognizer
+from inference.explainable_ai import ExplainableAIEngine, Explanation
 from inference.phase_detector import ExercisePhase, PhaseDetector, PhaseResult
 from inference.rep_tracker import RepEvent, RepTracker
 from mediapipe_pipeline.view_detector import ViewDetectionResult
@@ -47,6 +50,8 @@ class MovementAnalysisResult:
     rep_count: int
     errors: List[DetectedError] = field(default_factory=list)
     rep_event: Optional[RepEvent] = None
+    repetition_assessment: Optional[RepetitionAssessment] = None  # populated on the frame a rep completes
+    explanation: Optional[Explanation] = None                      # structured explainable-AI output, every frame
 
 
 class MovementAnalyzer:
@@ -70,12 +75,19 @@ class MovementAnalyzer:
         self._active_exercise_key: Optional[str] = None
         self._expected_exercise_key: Optional[str] = None
 
+        self.assessment_engine = ClinicalAssessmentEngine()
+        self.explainable_ai_engine = ExplainableAIEngine()
+        self._rep_buffers: Dict[str, Deque[RepFrameSample]] = {}
+        self._velocity_history: Dict[str, Deque[float]] = {}
+
     def reset(self) -> None:
         self.recognizer.reset()
         self.error_detector.reset()
         self._phase_detectors.clear()
         self._rep_trackers.clear()
         self._active_exercise_key = None
+        self._rep_buffers.clear()
+        self._velocity_history.clear()
 
     def set_expected_exercise(self, exercise_key: Optional[str]) -> None:
         """Optionally tell the analyzer which exercise a structured
@@ -134,7 +146,30 @@ class MovementAnalyzer:
         quality = self._compute_quality_score(errors)
         overall_confidence = float(np.clip(pose_confidence * recognition.confidence, 0.0, 1.0))
 
-        return MovementAnalysisResult(
+        # Buffer this frame for the in-progress repetition's clinical assessment.
+        trunk_lean = next((e.detail.get("trunk_lean_deg", 0.0) for e in errors if "trunk_lean_deg" in e.detail), 0.0)
+        shoulder_elevation = next((e.detail.get("elevation", 0.0) for e in errors if "elevation" in e.detail), 0.0)
+        rep_buffer = self._rep_buffers.setdefault(exercise_key, deque(maxlen=1000))
+        rep_buffer.append(RepFrameSample(
+            angle_deg=current_angle, movement_quality=quality,
+            trunk_lean_deg=trunk_lean, shoulder_elevation=shoulder_elevation, errors=errors,
+        ))
+
+        velocity_buffer = self._velocity_history.setdefault(exercise_key, deque(maxlen=1000))
+        velocity_buffer.append(phase_result.velocity_deg_per_sec)
+
+        repetition_assessment: Optional[RepetitionAssessment] = None
+        if rep_event is not None:
+            repetition_assessment = self.assessment_engine.assess_repetition(
+                list(rep_buffer), definition, rep_completed=rep_event.completed,
+                peak_progress_fraction=rep_event.peak_progress_fraction,
+            )
+            rep_buffer.clear()
+            velocity_buffer.clear()
+
+        peak_velocity = max((abs(v) for v in velocity_buffer), default=None) if velocity_buffer else None
+
+        result = MovementAnalysisResult(
             exercise_key=exercise_key,
             exercise_display_name=definition.display_name,
             exercise_recognition_confidence=recognition.confidence,
@@ -148,7 +183,12 @@ class MovementAnalyzer:
             rep_count=rep_tracker.rep_count,
             errors=errors,
             rep_event=rep_event,
+            repetition_assessment=repetition_assessment,
         )
+        result.explanation = self.explainable_ai_engine.explain(
+            result, definition, assessment=repetition_assessment, peak_velocity_deg_per_sec=peak_velocity,
+        )
+        return result
 
     @staticmethod
     def _compute_quality_score(errors: List[DetectedError]) -> float:

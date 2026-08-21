@@ -1,4 +1,4 @@
-# Real-Time Inference Guide
+# Inference Guide — Real-Time Rehabilitation Assessment Engine
 
 ## Quick start
 
@@ -8,122 +8,168 @@ python -m inference.realtime_pipeline --patient-id 3
 python -m inference.realtime_pipeline --skip-calibration
 ```
 
-Press `q` in the camera window to stop, or `Ctrl+C` in the terminal.
-From the dashboard, use the **Live Session** page — it launches this
-same command as a subprocess and shows live-updating stats pulled from
-the session database.
+Or launch from the dashboard's **Live Session** page (`streamlit run
+dashboard/app.py`), which runs the same command as a subprocess and
+polls live results from the database.
 
-## What happens
+Press `q` in the camera window, or `Ctrl+C` in the terminal, to stop.
+Calibration (see below) runs automatically first unless
+`--skip-calibration` is passed.
 
-1. **Camera streaming** (`camera/camera_manager.py`): a background
-   thread continuously reads frames into a small bounded `FrameQueue`
-   (`camera/frame_queue.py`), so the main loop always processes the
-   *newest* frame rather than falling behind. If the camera drops out
-   mid-session, it automatically reconnects
-   (`camera.auto_recovery` in `configs/camera.yaml`).
-2. **Calibration** (`inference/calibration.py`, skippable with
-   `--skip-calibration`): a ~12 second "stand still" session
-   (`calibration.duration_seconds` in `configs/calibration.yaml`)
-   estimates the patient's neutral pose, shoulder width, arm length,
-   torso length, and baseline joint angles — used to personalize later
-   error checks rather than comparing against a population average.
-3. **Pose estimation** (`mediapipe_pipeline/pose_estimator.py`):
-   MediaPipe BlazePose extracts 33 landmarks + visibility per frame.
-4. **View detection** (`mediapipe_pipeline/view_detector.py`):
-   automatically classifies front / left-side / right-side view from
-   shoulder geometry — the patient never selects a view manually.
-5. **Gap handling + smoothing**
-   (`mediapipe_pipeline/pose_smoothing.py`): a brief missed detection
-   holds the last known pose (up to 10 frames); beyond that the pose is
-   declared genuinely lost rather than silently analyzed as stale data.
-   An EMA smoother reduces frame-to-frame landmark jitter.
-6. **Feature extraction** (`utils/joint_angles.py`,
-   `feature_extraction/`): joint angles (including abduction and
-   rotation/pronation *proxy* angles — see the caveat below), velocity,
-   symmetry, trunk lean, shoulder elevation.
-7. **Movement analysis** (`inference/movement_analyzer.py`), which
-   composes:
-   - **Exercise recognition** (`inference/exercise_recognizer.py`):
-     rule-based scoring against the 10-exercise library
-     (`configs/exercises.yaml`) — no manual exercise selection.
-   - **Phase detection** (`inference/phase_detector.py`): neutral ->
-     moving-to-target -> peak -> returning -> neutral.
-   - **Rep counting** (`inference/rep_tracker.py`): counts only
-     complete neutral->peak->neutral cycles, so accidental movements
-     and incomplete reps are correctly excluded/flagged rather than
-     miscounted.
-   - **Error detection** (`inference/error_detector.py`): the full
-     required error set (incorrect angle, insufficient/excessive ROM,
-     incomplete rep, fast/jerky movement, trunk compensation, shoulder
-     hiking, body lean, poor alignment, incorrect sequence, asymmetry,
-     late movement, premature return).
-8. **Feedback generation** (`inference/feedback_engine.py`): natural
-   -language messages — never a bare "Wrong"/"Correct".
-9. **Visualization** (`visualization/`): green/red skeleton
-   (`skeleton_renderer.py`, red at joints implicated by an active
-   error), a translucent ghost skeleton at the target pose
-   (`ghost_skeleton.py` + `ideal_pose.py`), correction arrows
-   (`correction_arrows.py`), and a HUD (`hud_overlay.py`) showing
-   exercise, phase, rep count, quality, timer, FPS, CUDA status, and
-   confidence.
-10. **Dashboard logging** (`inference/session_logger.py`): every frame,
-    rep, and error event streams into the SQLite database in real time
-    (`dashboard/db.py`), so the dashboard's Exercise History / Recovery
-    Analytics pages reflect the session without a separate export step.
+## What happens each frame
+
+```
+CameraManager (background capture thread, frame queue, auto-recovery)
+        │
+        ▼
+PoseEstimator (MediaPipe BlazePose: 33 landmarks, visibility, 3D coords)
+        │
+        ▼
+PoseGapHandler (holds last-known pose through brief detection gaps,
+                declares "lost" beyond configs/camera.yaml's hold limit)
+        │
+        ▼
+LandmarkSmoother (EMA smoothing) + ViewDetector (front/left/right,
+                  majority-voted) + ConfidenceSmoother
+        │
+        ▼
+compute_all_joint_angles() → all tracked angles, incl. abduction and
+                              forearm/shoulder rotation proxies
+        │
+        ▼
+MovementAnalyzer
+   ├── ExerciseRecognizer   (auto-detects which of the 10 exercises)
+   ├── PhaseDetector          (neutral / moving / peak / returning, per exercise)
+   ├── RepTracker              (intelligent rep counting)
+   └── ErrorDetector            (14 error types, calibration-aware)
+        │
+        ▼
+FeedbackEngine (natural-language messages — never bare "wrong"/"correct")
+        │
+        ├──▶ SkeletonRenderer (green skeleton, red flagged joints)
+        ├──▶ GhostSkeletonRenderer + ideal_pose (target-pose overlay)
+        ├──▶ CorrectionArrowRenderer (arrows toward the ideal pose)
+        ├──▶ HUDOverlay (exercise, phase, reps, quality, timer, FPS, CUDA, confidence)
+        └──▶ SessionLogger → dashboard SQLite (session_frames, session_reps, session_events)
+```
+
+## Automatic camera view detection
+
+The patient never selects a view. `mediapipe_pipeline/view_detector.py`
+classifies front / left-side / right-side purely from shoulder
+geometry (x-span and relative depth), majority-voted over a rolling
+window so a single noisy frame can't flip the detected view mid-rep.
+Each exercise's `required_view` (see `configs/exercises.yaml`) feeds
+into exercise recognition scoring — exercises expecting a view the
+patient isn't currently in score lower, without ever blocking the
+patient or asking them to change anything manually.
+
+## Automatic exercise recognition
+
+`inference/exercise_recognizer.py` scores all 10 supported exercises
+against a rolling buffer of the patient's own joint-angle trajectory —
+no manual exercise selection, no per-exercise training data required.
+It is intentionally a transparent, tunable rule-based recognizer; the
+trained ST-GCN classifier (`models/stgcn_model.py` — see
+`docs/training_guide.md`) is a natural drop-in or ensemble replacement
+once labeled session data exists.
 
 ## Supported exercises
 
-Exactly ten, defined in `configs/exercises.yaml` /
-`inference/exercise_library.py`:
-
 Shoulder Flexion, Shoulder Abduction, Elbow Flexion, Elbow Extension,
 Forearm Pronation, Forearm Supination, Shoulder External Rotation,
-Shoulder Internal Rotation, Hand-to-Mouth Reach, Hand-to-Head Reach.
+Shoulder Internal Rotation, Hand-to-Mouth Reach, Hand-to-Head Reach —
+defined in `configs/exercises.yaml`, loaded via
+`inference/exercise_library.py`.
 
-## Important limitation: forearm/shoulder rotation angles
+> **Limitation:** MediaPipe *Pose* (not *Hands*) provides only 3 sparse
+> hand landmarks (thumb/index/pinky tips) per side. Forearm
+> pronation/supination and shoulder internal/external rotation are
+> approximated from these (`utils/joint_angles.py:forearm_rotation_proxy_deg`
+> / `shoulder_rotation_proxy_deg`) — directionally useful, not a
+> clinically validated goniometer replacement. See those functions'
+> docstrings; integrating MediaPipe Hands is the natural next step.
 
-MediaPipe **Pose** (used throughout this project) provides only 3
-sparse points per hand (thumb, index, pinky tips) — not the full
-21-point MediaPipe **Hands** topology. Forearm pronation/supination and
-shoulder internal/external rotation therefore use *proxy* angles
-(`utils.joint_angles.forearm_rotation_proxy_deg` /
-`shoulder_rotation_proxy_deg`) that are directionally useful but not a
-clinically validated goniometer replacement. Integrating MediaPipe
-Hands is the natural next step for precise tracking of these four
-exercises (see `docs/architecture.md`).
+## Calibration (personalization)
+
+Runs automatically before the exercise loop (`inference/calibration.py`),
+targeting under 15 seconds (`configs/calibration.yaml`, default 12s +
+prompts). The patient stands in a neutral pose while the system
+estimates shoulder width, arm lengths, torso length, and baseline joint
+angles, rejecting the session (with a clear reason) if too few frames
+were captured or the readings weren't stable — never silently
+calibrating against noisy data.
+
+## Error detection
+
+14 error types are detected in real time
+(`inference/error_detector.py`): incorrect joint angle, insufficient/
+excessive ROM, incomplete repetition, fast/jerky movement, trunk
+compensation, shoulder hiking, body lean, poor alignment, incorrect
+exercise sequence, asymmetrical motion, late movement, and premature
+return. Each check is independently testable (see
+`tests/test_error_detector.py`) and driven by `configs/exercises.yaml`
+thresholds plus the patient's own calibration baseline where available.
+
+## Rep counting
+
+`inference/rep_tracker.py` counts a repetition only on a complete
+neutral → peak → neutral cycle (driven by `PhaseDetector`'s phase
+stream), which naturally ignores incidental small movements (never
+reach peak), tolerates pauses at any phase (state simply holds), and
+flags — rather than silently counts — incomplete repetitions and
+premature returns.
+
+## Smoothing
+
+Four independent smoothing layers, so different signal types get
+appropriately-scaled damping (`inference/smoothing.py` +
+`mediapipe_pipeline/pose_smoothing.py`): landmark EMA, per-angle EMA,
+confidence EMA, and majority-vote prediction smoothing (used
+internally by both `ExerciseRecognizer` and `ViewDetector`).
 
 ## Performance
 
-Target: 25-35 FPS at 720p, <50ms inference latency. In practice:
+Target: 25-35 FPS at 720p, <50ms inference latency. Contributing
+design choices:
+- Camera capture runs on a background thread with a small (default
+  size-2) frame queue, so the main loop always processes the newest
+  frame rather than a backlog (`camera/frame_queue.py`).
+- `camera/fps_controller.py` adaptively lowers the target FPS (down to
+  a configured floor) if the pipeline falls behind, and steps back up
+  once headroom returns.
+- `utils/timers.py:StageTimer` measures per-stage latency
+  (pose estimation, smoothing/features, movement analysis), shown live
+  in the HUD.
+- CUDA is used automatically wherever available (`utils/gpu_utils.py`);
+  CUDA status is shown in the HUD.
 
-- `camera/fps_controller.py` measures achieved FPS and adaptively caps
-  the target down (never below `camera.fps_min`) if the pipeline can't
-  keep up, then steps back up once headroom returns.
-- `utils/timers.StageTimer` (surfaced in the HUD) breaks down
-  per-stage latency (pose estimation, smoothing/features, movement
-  analysis) so a slow stage is easy to identify.
-- CUDA is used automatically when available
-  (`configs/gpu.yaml -> use_cuda_if_available`); the HUD shows live
-  CUDA status.
+## Camera resilience
 
-## Personalization / calibration details
+`camera/camera_manager.py`'s background capture thread automatically
+reconnects after `configs/camera.yaml -> auto_recovery.max_consecutive_failures`
+consecutive read failures — a webcam briefly held by another process,
+or a momentary USB glitch, doesn't require restarting the session.
 
-`inference/calibration.py`'s `CalibrationSession` only *accepts* a
-calibration once the buffered joint angles are stable (std-dev below
-`calibration.stability_std_threshold_deg`) — an unstable session
-(patient still moving, poor detection) is rejected with a clear reason
-rather than silently calibrating against noisy data, and the pipeline
-proceeds without a personalized baseline in that case (falling back to
-population-average thresholds).
+## Dashboard communication
 
-## Testing without a webcam
+`inference/session_logger.py` streams every frame's exercise, phase,
+joint angles, quality, confidence, ROM, and any active errors into the
+dashboard's SQLite database in real time (`session_frames`,
+`session_reps`, `session_events` tables — see `dashboard/db.py`), plus
+a session summary (duration, total reps, mean quality/confidence) on
+completion. The dashboard's **Live Session** page polls this while a
+session is running.
 
-Every module above (except the outermost camera-thread + `cv2.imshow`
-loop) can be exercised with synthetic data — see
-`tests/test_realtime_pipeline_integration.py`, which drives
-`RealtimeInferencePipeline._process_frame()` directly against synthetic
-frames, and the focused unit tests for each component
-(`tests/test_rep_tracker.py`, `test_calibration.py`,
-`test_exercise_recognizer.py`, `test_error_detector.py`,
-`test_view_detector.py`, `test_camera_realtime.py`,
-`test_skeleton_renderer.py`, `test_session_logger.py`).
+## Troubleshooting
+
+- **"No frame received within timeout"**: check `python main.py
+  check-gpu` isn't holding the camera, or increase
+  `camera.retry_delay_seconds`.
+- **View keeps flipping between front/side**: increase
+  `mediapipe_pipeline.view_detector.ViewDetector`'s `smoothing_window`,
+  or ensure even lighting so shoulder depth estimates are stable.
+- **Reps not counting**: check the HUD's reported `Phase` — if it never
+  reaches `peak`, the movement isn't reaching
+  `configs/exercises.yaml`'s `near_target_fraction` threshold for that
+  exercise; verify camera framing includes the full arm.

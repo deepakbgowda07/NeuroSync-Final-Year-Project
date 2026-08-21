@@ -56,7 +56,14 @@ class SessionLogger:
         logger.info("Session logging started: session_id=%d, patient_id=%s", self.session_id, self.patient_id)
         return self.session_id
 
-    def log_frame(self, result: MovementAnalysisResult, angles: Dict[str, float]) -> None:
+    def log_frame(
+        self,
+        result: MovementAnalysisResult,
+        angles: Dict[str, float],
+        fps: Optional[float] = None,
+        cuda_available: Optional[bool] = None,
+        session_elapsed_seconds: Optional[float] = None,
+    ) -> None:
         if self.session_id is None:
             raise RuntimeError("SessionLogger.log_frame() called before start_session().")
 
@@ -71,13 +78,15 @@ class SessionLogger:
             conn.execute(
                 """INSERT INTO session_frames
                    (session_id, frame_timestamp, exercise_name, phase, predicted_class,
-                    confidence, movement_quality, rom_deg, joint_angles_json)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    confidence, movement_quality, rom_deg, joint_angles_json,
+                    fps, cuda_available, session_elapsed_seconds)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     self.session_id, time.time(), result.exercise_display_name,
                     result.phase.value if result.phase else None, None,
                     result.overall_confidence, result.movement_quality, rom_deg,
-                    json.dumps(angles),
+                    json.dumps(angles), fps, int(cuda_available) if cuda_available is not None else None,
+                    session_elapsed_seconds,
                 ),
             )
 

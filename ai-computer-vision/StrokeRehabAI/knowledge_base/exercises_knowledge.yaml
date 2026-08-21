@@ -1,0 +1,212 @@
+# Physiotherapy Knowledge Base — Exercise Definitions
+# =====================================================
+# Editable clinical reference data, separate from the *runtime
+# thresholds* in configs/exercises.yaml (which drive rep detection and
+# error thresholds). This file is the *clinical knowledge* layer:
+# target joints, normal ROM ranges cited from general physiotherapy
+# reference ranges, expected movement sequence, known compensation
+# patterns, and correction rules in plain language — consumed by
+# inference/knowledge_base.py.
+#
+# TODO (next development phase): normal_rom_deg values are standard
+# textbook reference ranges (e.g. AAOS/AMA guides), not measurements
+# from this project's own patient population — validate against
+# clinician input before using for diagnostic-adjacent purposes.
+
+knowledge_base:
+  exercises:
+    shoulder_flexion:
+      target_joints: ["shoulder"]
+      target_muscles: ["anterior deltoid", "pectoralis major (clavicular head)", "coracobrachialis"]
+      normal_rom_deg: [0, 180]
+      functional_rom_deg: [0, 150]
+      expected_movement_sequence:
+        - "Start with the arm relaxed at the side (neutral)."
+        - "Raise the arm forward and upward in the sagittal plane, keeping the elbow extended or gently flexed."
+        - "Reach the target elevation without trunk or shoulder-girdle compensation."
+        - "Lower the arm back to the starting position with control."
+      compensation_patterns:
+        - name: "trunk_compensation"
+          description: "Leaning the trunk backward or to the side to help raise the arm, substituting spinal extension for shoulder mobility."
+        - name: "shoulder_hiking"
+          description: "Elevating the shoulder girdle (shrugging) to assist arm elevation when true shoulder flexion is limited."
+      clinical_description: >
+        Shoulder flexion is forward elevation of the arm in the sagittal plane. Reduced flexion
+        is common after stroke due to hemiparetic weakness of the anterior deltoid and
+        synergist muscles, and is frequently accompanied by compensatory trunk or scapular movement.
+      correction_rules:
+        - "If ROM < functional range: increase mobility work within a pain-free range before adding resistance."
+        - "If trunk lean detected: cue the patient to keep the trunk against a chair back or wall during practice."
+
+    shoulder_abduction:
+      target_joints: ["shoulder"]
+      target_muscles: ["deltoid (middle fibers)", "supraspinatus"]
+      normal_rom_deg: [0, 180]
+      functional_rom_deg: [0, 150]
+      expected_movement_sequence:
+        - "Start with the arm relaxed at the side."
+        - "Raise the arm out to the side in the frontal/coronal plane."
+        - "Avoid rotating the forearm or leaning the trunk away from the moving arm."
+        - "Lower with control back to the starting position."
+      compensation_patterns:
+        - name: "trunk_compensation"
+          description: "Side-bending the trunk away from the moving arm to gain apparent height."
+        - name: "shoulder_hiking"
+          description: "Elevating the shoulder girdle to substitute for true glenohumeral abduction."
+      clinical_description: >
+        Shoulder abduction raises the arm laterally away from the body. The supraspinatus initiates
+        the first ~15 degrees before the deltoid takes over; limited abduction after stroke often
+        reflects both weakness and altered scapulohumeral rhythm.
+      correction_rules:
+        - "If ROM < functional range: prioritize scapular stabilization exercises alongside abduction practice."
+        - "If shoulder hiking detected: cue 'relax the shoulder down' before each repetition."
+
+    elbow_flexion:
+      target_joints: ["elbow"]
+      target_muscles: ["biceps brachii", "brachialis", "brachioradialis"]
+      normal_rom_deg: [0, 150]
+      functional_rom_deg: [30, 130]
+      expected_movement_sequence:
+        - "Start with the elbow extended (arm relatively straight)."
+        - "Flex the elbow, bringing the hand toward the shoulder."
+        - "Maintain a stationary upper arm — avoid shoulder movement substituting for elbow flexion."
+        - "Extend back to the start position with control."
+      compensation_patterns:
+        - name: "shoulder_compensation"
+          description: "Flexing/raising the shoulder to swing the forearm rather than isolating elbow flexion."
+      clinical_description: >
+        Elbow flexion brings the hand toward the shoulder and is essential for feeding, grooming,
+        and most activities of daily living. It is frequently one of the earliest movements to
+        partially recover after stroke due to flexor synergy patterns.
+      correction_rules:
+        - "If ROM < functional range: use gravity-eliminated positions before working against gravity."
+        - "If movement is fast/jerky: slow the cadence and add a brief hold at end-range."
+
+    elbow_extension:
+      target_joints: ["elbow"]
+      target_muscles: ["triceps brachii", "anconeus"]
+      normal_rom_deg: [0, 150]
+      functional_rom_deg: [20, 150]
+      expected_movement_sequence:
+        - "Start with the elbow flexed."
+        - "Extend the elbow, straightening the arm."
+        - "Reach as close to full extension as comfortably possible."
+        - "Return to the flexed starting position with control."
+      compensation_patterns:
+        - name: "shoulder_compensation"
+          description: "Using shoulder extension or trunk lean to move the hand away rather than true elbow extension."
+      clinical_description: >
+        Elbow extension against gravity is often disproportionately weak after stroke relative to
+        flexion (extensor synergy weakness), making it a common, clinically significant rehabilitation target.
+      correction_rules:
+        - "If extension remains limited (see inference/clinical_reasoning.py's elbow_extension_limited rule): suggest controlled elbow extension exercises, progressing range gradually."
+
+    forearm_pronation:
+      target_joints: ["forearm", "wrist"]
+      target_muscles: ["pronator teres", "pronator quadratus"]
+      normal_rom_deg: [0, 90]
+      functional_rom_deg: [0, 80]
+      expected_movement_sequence:
+        - "Start with the palm facing up (supinated) and elbow at the side, flexed ~90 degrees."
+        - "Rotate the forearm so the palm turns to face down."
+        - "Keep the elbow stationary at the side throughout."
+      compensation_patterns:
+        - name: "shoulder_compensation"
+          description: "Rotating the whole arm at the shoulder instead of isolating forearm rotation."
+      clinical_description: >
+        Pronation/supination (forearm rotation) is essential for tasks like turning a doorknob or
+        using utensils. Precise measurement from video requires hand landmark detail beyond
+        MediaPipe Pose's 3 sparse hand points per side — see the proxy-angle caveat in
+        utils/joint_angles.py.
+      correction_rules:
+        - "If rotation range is limited: keep the elbow tucked against the body to isolate true forearm rotation."
+
+    forearm_supination:
+      target_joints: ["forearm", "wrist"]
+      target_muscles: ["biceps brachii", "supinator"]
+      normal_rom_deg: [0, 90]
+      functional_rom_deg: [0, 80]
+      expected_movement_sequence:
+        - "Start with the palm facing down (pronated) and elbow at the side, flexed ~90 degrees."
+        - "Rotate the forearm so the palm turns to face up."
+        - "Keep the elbow stationary at the side throughout."
+      compensation_patterns:
+        - name: "shoulder_compensation"
+          description: "Rotating the whole arm at the shoulder instead of isolating forearm rotation."
+      clinical_description: >
+        Supination is often weaker than pronation after stroke since the biceps (a supinator) is
+        commonly affected by hemiparesis.
+      correction_rules:
+        - "If rotation range is limited: keep the elbow tucked against the body to isolate true forearm rotation."
+
+    shoulder_external_rotation:
+      target_joints: ["shoulder"]
+      target_muscles: ["infraspinatus", "teres minor"]
+      normal_rom_deg: [0, 90]
+      functional_rom_deg: [0, 70]
+      expected_movement_sequence:
+        - "Start with the elbow flexed to 90 degrees, tucked at the side, forearm pointing forward."
+        - "Rotate the forearm outward, away from the body, keeping the elbow at the side."
+        - "Return to the starting position with control."
+      compensation_patterns:
+        - name: "shoulder_abduction_substitution"
+          description: "Lifting the elbow away from the body (abducting) rather than rotating in place."
+      clinical_description: >
+        External rotation is important for overhead reaching and rotator-cuff function; it is
+        measured here via an engineering proxy angle (utils/joint_angles.py) pending MediaPipe Hands integration.
+      correction_rules:
+        - "If elbow drifts from the body: cue 'keep your elbow glued to your side' during the movement."
+
+    shoulder_internal_rotation:
+      target_joints: ["shoulder"]
+      target_muscles: ["subscapularis", "pectoralis major", "latissimus dorsi"]
+      normal_rom_deg: [0, 90]
+      functional_rom_deg: [0, 70]
+      expected_movement_sequence:
+        - "Start with the elbow flexed to 90 degrees, tucked at the side, forearm pointing forward."
+        - "Rotate the forearm inward, across the body, keeping the elbow at the side."
+        - "Return to the starting position with control."
+      compensation_patterns:
+        - name: "shoulder_abduction_substitution"
+          description: "Lifting the elbow away from the body rather than rotating in place."
+      clinical_description: >
+        Internal rotation is needed for tasks like reaching behind the back; commonly tighter/less
+        limited than external rotation post-stroke in many presentations, but varies by patient.
+      correction_rules:
+        - "If elbow drifts from the body: cue 'keep your elbow glued to your side' during the movement."
+
+    hand_to_mouth:
+      target_joints: ["elbow", "shoulder"]
+      target_muscles: ["biceps brachii", "brachialis", "anterior deltoid"]
+      normal_rom_deg: [30, 170]
+      functional_rom_deg: [35, 160]
+      expected_movement_sequence:
+        - "Start with the arm extended at the side or in front."
+        - "Flex the elbow and slightly the shoulder to bring the hand to the mouth."
+        - "Return to the starting position with control."
+      compensation_patterns:
+        - name: "head_forward_compensation"
+          description: "Bringing the head/neck down and forward toward the hand instead of bringing the hand to the mouth."
+      clinical_description: >
+        A functional task-oriented reach pattern directly relevant to feeding independence — a
+        high-priority activity-of-daily-living target in stroke rehabilitation.
+      correction_rules:
+        - "If completion is inconsistent: break the reach into elbow-flexion-only practice first, then combine with the functional reach."
+
+    hand_to_head:
+      target_joints: ["elbow", "shoulder"]
+      target_muscles: ["biceps brachii", "anterior/middle deltoid"]
+      normal_rom_deg: [25, 170]
+      functional_rom_deg: [30, 160]
+      expected_movement_sequence:
+        - "Start with the arm extended at the side."
+        - "Flex the elbow and raise the shoulder to bring the hand to the top/side of the head."
+        - "Return to the starting position with control."
+      compensation_patterns:
+        - name: "trunk_compensation"
+          description: "Leaning the head/trunk toward the hand instead of raising the arm fully."
+      clinical_description: >
+        A functional reach pattern relevant to grooming and dressing tasks, combining shoulder
+        elevation with elbow flexion.
+      correction_rules:
+        - "If trunk lean detected: practice the reach seated with the back supported to isolate arm movement."

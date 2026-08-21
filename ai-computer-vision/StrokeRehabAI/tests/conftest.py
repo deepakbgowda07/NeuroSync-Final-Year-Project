@@ -8,6 +8,10 @@ camera, MediaPipe, or a real dataset.
 
 from __future__ import annotations
 
+import sys
+# Mask tensorflow to prevent import errors with incompatible protobuf versions in the environment
+sys.modules["tensorflow"] = None
+
 import numpy as np
 import pytest
 
