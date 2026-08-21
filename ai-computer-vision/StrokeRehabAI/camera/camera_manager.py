@@ -148,7 +148,14 @@ class CameraManager:
                 logger.warning("Camera connect attempt %d/%d failed: %s", attempt, self.retry_attempts, exc)
                 time.sleep(self.retry_delay_seconds)
 
-        raise RuntimeError(f"Failed to connect camera after {self.retry_attempts} attempts.") from last_error
+        from utils.error_handling import CameraError
+
+        raise CameraError(
+            "Could not connect to the camera. Check that it's plugged in, not in use by "
+            "another application, and that the correct camera index is set in configs/camera.yaml.",
+            detail=f"Failed after {self.retry_attempts} attempts.",
+            cause=last_error,
+        ) from last_error
 
     def release(self) -> None:
         self.stop_streaming()

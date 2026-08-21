@@ -98,7 +98,7 @@ StrokeRehabAI/
 │                            # detection, calibration, feedback, session logging, orchestration
 ├── evaluation/              # Offline evaluation, ROM scoring, report generation, GPU/FPS benchmarking
 ├── visualization/           # Skeleton (green/red), ghost pose, correction arrows, full HUD
-├── dashboard/                # Streamlit clinical UI (multipage, live session launch + polling)
+├── dashboard/                # Clinical dashboard: patients, live session, recovery analytics, reports, alerts
 ├── reports/                  # Session report + (planned) PDF export
 ├── utils/                     # Logging, GPU, geometry, IO, seeding, checkpoints
 ├── weights/                    # Trained model checkpoints (gitignored)
@@ -141,9 +141,15 @@ evaluating are all implemented and tested against synthetic data.
 | [dataset_guide.md](docs/dataset_guide.md) | Supported datasets & acquisition |
 | [training_guide.md](docs/training_guide.md) | How to train once data exists |
 | [inference_guide.md](docs/inference_guide.md) | The real-time engine: exercise recognition, rep counting, error detection, calibration |
-| [dashboard_guide.md](docs/dashboard_guide.md) | Streamlit dashboard usage |
+| [dashboard_guide.md](docs/dashboard_guide.md) | Clinical dashboard: patient management, recovery analytics, alerts, reporting |
 | [developer_guide.md](docs/developer_guide.md) | Code layout, conventions, adding modules |
 | [contribution_guide.md](docs/contribution_guide.md) | Contribution workflow |
+| [user_manual.md](docs/user_manual.md) | Day-to-day clinical usage walkthrough |
+| [deployment_guide.md](docs/deployment_guide.md) | Deployment scenarios, model export, performance tuning |
+| [api_documentation.md](docs/api_documentation.md) | Programmatic interface reference for every package |
+| [troubleshooting_guide.md](docs/troubleshooting_guide.md) | Common issues and fixes |
+| [faq.md](docs/faq.md) | Frequently asked questions |
+| [CHANGELOG.md](CHANGELOG.md) | Version history and what changed in each development stage |
 
 ## License / academic use
 

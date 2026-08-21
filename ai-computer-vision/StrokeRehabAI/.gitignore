@@ -32,6 +32,3 @@ outputs/*
 
 # Streamlit / dashboard DB
 *.db
-
-# Environment files
-.env

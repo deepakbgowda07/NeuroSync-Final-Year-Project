@@ -41,6 +41,8 @@ setup(
         "onnx>=1.16.1",
         "streamlit>=1.37.0",
         "tensorboard>=2.17.0",
+        "reportlab>=4.2.2",
+        "openpyxl>=3.1.5",
         "tqdm>=4.66.4",
     ],
     extras_require={

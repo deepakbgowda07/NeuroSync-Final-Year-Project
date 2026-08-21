@@ -169,6 +169,12 @@ class STGCN(BaseRehabModel, nn.Module if torch is not None else object):
         self.final_channels = prev_channels
         self.classifier = nn.Linear(prev_channels, num_classes)
         self.dropout = nn.Dropout(dropout)
+        # AdaptiveAvgPool2d(1) is functionally equivalent to
+        # F.avg_pool2d(x, x.size()[2:]) for a global spatial-temporal
+        # average, but (unlike a kernel size derived from x.size() at
+        # trace time) exports cleanly to ONNX/TorchScript — see
+        # models/export_utils.py.
+        self.global_pool = nn.AdaptiveAvgPool2d(1)
 
     def forward(self, x):
         """x: (N, C, T, V) -> logits: (N, num_classes)"""
@@ -185,7 +191,7 @@ class STGCN(BaseRehabModel, nn.Module if torch is not None else object):
             x = block(x, A_weighted)
 
         # Global average pool over time and joints -> (N, C)
-        x = F.avg_pool2d(x, x.size()[2:])
+        x = self.global_pool(x)
         x = x.view(n, self.final_channels)
         x = self.dropout(x)
         return self.classifier(x)
