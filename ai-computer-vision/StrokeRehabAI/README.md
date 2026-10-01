@@ -1,89 +1,114 @@
 # StrokeRehabAI
 
-**AI-Assisted Stroke Rehabilitation Exercise Assessment System using Computer Vision**
+StrokeRehabAI is a computer-vision system for stroke rehabilitation. It
+uses a webcam to observe exercises, count repetitions, detect movement
+problems, show feedback, and save session data in a local dashboard.
 
-> **Project status: real-time inference engine + training pipeline
-> implemented; model untrained on clinical data.** Three things are
-> true simultaneously: (1) the **real-time engine is fully usable
-> today** — point a webcam at yourself and it detects your exercise,
-> counts reps, flags form errors, and gives natural-language feedback,
-> all rule-based against clinically-informed defaults, no trained model
-> required; (2) the **dataset & training pipeline is fully implemented**
-> (video processing, MediaPipe caching, feature extraction, an ST-GCN
-> model, a complete training loop) and tested end-to-end against
-> synthetic data; (3) what's still missing is **licensed clinical
-> training data** to actually train that model and validate the
-> rule-based thresholds against real patients — none of the four
-> supported public datasets ship with this repo (see
-> `docs/dataset_guide.md`). See [`docs/architecture.md`](docs/architecture.md)
-> for the full module map, [`docs/inference_guide.md`](docs/inference_guide.md)
-> for the real-time engine, and [`docs/training_guide.md`](docs/training_guide.md)
-> for the training pipeline.
+The live pipeline currently uses transparent, configuration-based rules.
+The ST-GCN and LSTM models are available for training and evaluation, but
+this project does not include a clinically trained checkpoint or patient
+dataset.
 
-## What this is
+## Workflow
 
-A real-time rehabilitation exercise assessment system: point a laptop
-webcam at a patient performing one of 10 supported exercises, and it
-automatically detects which exercise and camera view they're in, tracks
-repetitions, flags movement-quality errors (insufficient range of
-motion, trunk compensation, shoulder hiking, asymmetry, and more), and
-gives natural-language corrective feedback — live, on-screen, and
-logged to a clinical dashboard. A short calibration step personalizes
-error checks to the patient's own body rather than a population
-average.
+### Live webcam workflow
 
-Underneath, it's a modular, config-driven pipeline: MediaPipe extracts
-33 body landmarks per frame, a clinical feature-extraction suite
-computes joint angles/kinematics/compensation indicators, and — for
-the (separately trainable) deep-learning path — an ST-GCN
-(Spatial-Temporal Graph Convolutional Network) can score exercise
-correctness once trained on real session data. The real-time engine's
-exercise recognition and error detection are rule-based today and work
-without any trained model; the ST-GCN is the natural upgrade path once
-labeled data exists.
+1. `camera/` captures the newest webcam frame.
+2. `mediapipe_pipeline/` detects 33 body landmarks.
+3. The landmarks are smoothed and the camera view is detected.
+4. `utils/` and `feature_extraction/` calculate joint angles, motion,
+   symmetry, and other movement features.
+5. `inference/` recognizes the exercise, tracks its phase and repetitions,
+   checks movement errors, and calculates a quality score.
+6. `visualization/` draws the skeleton, warnings, ideal pose, arrows, and HUD.
+7. `inference/session_logger.py` saves session data to SQLite.
+8. `dashboard/` displays patients, sessions, history, analytics, and reports.
 
-## Target hardware
+### Dataset and training workflow
 
-- Windows 11
-- Python 3.10.11
-- NVIDIA RTX 3050 Laptop GPU (6GB VRAM), CUDA-capable
-- Integrated laptop webcam
+Raw videos are read from `data/raw/`. `datasets/` converts them into
+processed `.npz` files in `data/processed/`. The files contain landmarks,
+labels, metadata, and features. `preprocessing/` normalizes and windows
+the sequences. `training/` loads the windows, trains a model, saves
+checkpoints in `weights/checkpoints/`, and writes TensorBoard logs and
+evaluation reports.
 
-The system gracefully falls back to CPU if no CUDA-capable GPU is detected
-(see `utils/gpu_utils.py`).
+## Important folders and files
 
-## Quick start
+| Path | Responsibility |
+|---|---|
+| `main.py` | CLI for training, inference, checks, and dashboard help |
+| `configs/` | YAML settings for camera, exercises, models, training, and dashboard |
+| `camera/` | Webcam/video input, frame queue, FPS control, and recovery |
+| `mediapipe_pipeline/` | Pose estimation, landmark handling, smoothing, and view detection |
+| `feature_extraction/` | Joint-angle, kinematic, clinical, and repetition features |
+| `inference/` | Live recognition, phase detection, rep tracking, errors, feedback, and logging |
+| `visualization/` | Skeleton, ideal pose, correction arrows, and HUD rendering |
+| `datasets/` | Raw dataset discovery, conversion, labels, caching, and validation |
+| `preprocessing/` | Landmark normalization, augmentation, and sequence windows |
+| `models/` | ST-GCN model, LSTM model, graph utilities, and model factory |
+| `training/` | Data loaders, optimizer, loss, scheduler, checkpoints, and training loop |
+| `evaluation/` | Model metrics, reports, ROM scores, and benchmarks |
+| `dashboard/` | Streamlit app, SQLite database, and dashboard pages |
+| `data/raw/` | Manually supplied videos and labels |
+| `data/processed/` | Converted `.npz` training samples |
+| `weights/` | Trained model checkpoints and exports |
+| `outputs/` | SQLite database and generated reports |
+| `tests/` | Automated unit and integration tests |
 
-```bash
-# 1. Create environment (conda)
-conda env create -f environment.yml
-conda activate strokerehab-ai
+## Technologies and models
 
-# --- OR --- with plain pip/venv:
-python -m venv venv
-venv\Scripts\activate          # Windows
+- Python 3.10
+- OpenCV for camera and image processing
+- MediaPipe Pose for 33 body landmarks
+- NumPy and SciPy-style numerical processing
+- PyTorch and TorchVision
+- ST-GCN for graph-based skeleton sequence classification
+- LSTM as a baseline sequence model
+- scikit-learn for metrics
+- Streamlit for the dashboard
+- SQLite for local session storage
+- YAML configuration files
+- ONNX and ONNX Runtime for model export/inference support
+- TensorBoard for training logs
+
+## Local setup
+
+Run these commands from this folder on Windows:
+
+```powershell
+py -3.10 -m venv .venv310
+.venv310\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 pip install -r requirements.txt
+pip install --no-deps -e .
+```
 
-# 2. Editable install so packages are importable everywhere
-pip install -e .
+No environment variables are required. CUDA is used automatically when a
+compatible PyTorch build and NVIDIA driver are available; otherwise the
+project uses the CPU.
 
-# 3. Sanity checks
+## Run locally
+
+Check the setup:
+
+```powershell
 python main.py check-gpu
 python main.py check-data
-pytest
+```
 
-# 4. Run a live session (webcam required)
-python -m inference.realtime_pipeline
+Start the dashboard:
 
-# 5. Or launch the dashboard (also lets you start a live session from the browser)
+```powershell
 streamlit run dashboard/app.py
 ```
 
-See [`docs/installation_guide.md`](docs/installation_guide.md) for the full,
-Windows-specific walkthrough including CUDA setup.
+Open `http://localhost:8501` in a browser. The dashboard can start a live
+session from its Live Session page.
 
-## Project structure
+Run the live camera pipeline directly:
 
+<<<<<<< Updated upstream
 ```
 StrokeRehabAI/
 ├── configs/              # YAML configuration + loader (incl. exercises.yaml, calibration.yaml)
@@ -110,26 +135,25 @@ StrokeRehabAI/
 ├── requirements.txt / environment.yml
 ├── setup.py
 └── main.py                         # CLI dispatcher: train / infer / dashboard / check-gpu / check-data
+=======
+```powershell
+python -m inference.realtime_pipeline
+python -m inference.realtime_pipeline --skip-calibration
+>>>>>>> Stashed changes
 ```
 
-Full breakdown: [`docs/folder_structure.md`](docs/folder_structure.md).
+Press `q` in the camera window to stop. A trained checkpoint is optional for
+testing the rule-based live pipeline, but real model training requires
+processed data in `data/processed/`.
 
-## Why the model isn't trained on clinical data yet
+Run tests:
 
-The training pipeline itself is complete and tested (dataset conversion,
-augmentation, ST-GCN, the full training loop). What's missing is data:
-none of the four supported public rehab-exercise datasets (UI-PRMD,
-KIMORE, IntelliRehabDS, the NIAID-hosted Stroke Rehabilitation Exercise
-Dataset) can be auto-downloaded — each requires manual download and/or
-registration under its own license. See
-[`docs/dataset_guide.md`](docs/dataset_guide.md) for exact URLs, expected
-local paths, and each dataset converter's documented assumptions.
-`datasets/download_dataset.py` gives guided setup instructions. Once a
-dataset is in place, `datasets/dataset_converter.py` converts it into
-this project's unified `.npz` format and `training/trainer.py` trains
-the default `STGCN` model end-to-end — checkpointing, resuming, and
-evaluating are all implemented and tested against synthetic data.
+```powershell
+pip install pytest pytest-cov
+pytest
+```
 
+<<<<<<< Updated upstream
 ## Documentation index
 
 | Doc | Purpose |
@@ -157,3 +181,7 @@ This project is intended as a foundation for coursework / research
 (e.g. a final-year CSE project or IEEE/Springer-style publication after the
 modeling phase is completed). No trained weights or patient data are
 included.
+=======
+For more detail, see the files in `docs/`, especially `architecture.md`,
+`inference_guide.md`, `training_guide.md`, and `dataset_guide.md`.
+>>>>>>> Stashed changes
